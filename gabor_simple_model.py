@@ -10,9 +10,9 @@ class GaborSimpleModel(nn.Module):
         self.num_orientations = num_orientations
         self.num_scales = num_scales
         self.kernel_size = kernel_size
-        self.output_channels = output_channels  # Add this to specify output channels
+        self.output_channels = output_channels  
         
-        # First Gabor Filter Layer
+        # First Gabor Filter Layer, using padding to avoid downsampling?
         self.sigma1, self.theta1, self.Lambda1, self.psi1, self.gamma1, self.bias1 = self.generate_parameters(num_orientations*num_scales, in_channels)
         self.filter_cos1 = self.whole_filter(True, self.sigma1, self.theta1, self.Lambda1, self.psi1, self.gamma1)
         self.filter_sin1 = self.whole_filter(False, self.sigma1, self.theta1, self.Lambda1, self.psi1, self.gamma1)
@@ -41,11 +41,15 @@ class GaborSimpleModel(nn.Module):
         # Final Convolutional Layer
         output = self.final_conv(x_comb2)  # This layer ensures the output has the same spatial dimensions as the input
 
+        # Apply sigmoid activation to ensure output values are in the range [0, 1]
+        output = torch.sigmoid(output)
+
         # upsampling??
         
         return output 
 
     def generate_parameters(self, dim_out, dim_in):
+        torch.manual_seed(1)
         # Adjusted to initialize parameters more appropriately for Gabor filters
         sigma = nn.Parameter(torch.rand(dim_out, 1) * 2.0 + 0.5) # Random values between 0.5 and 2.5
         theta = nn.Parameter(torch.rand(dim_out, 1) * np.pi) # Random values between 0 and π
