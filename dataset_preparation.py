@@ -5,6 +5,7 @@ from PIL import Image
 import os
 
 # FOR COORDINATE-BASED CENTERLINE DETECTION
+# DEPRECATED
 
 
 

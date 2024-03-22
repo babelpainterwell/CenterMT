@@ -1,11 +1,8 @@
 import torch
 import torch.nn.functional as F
-from torch.utils.data import DataLoader
-from torchvision import transforms
 from torch.optim.lr_scheduler import StepLR
 from dataset_preparation import MyDataset, train_loader, test_loader
-from gabor_simple_model import GaborSimpleModel
-import os
+from gabor_unet_model import GaborUNet
 import argparse
 
 def train(args, model, device, train_loader, optimizer, epoch):
@@ -41,19 +38,19 @@ def test(model, device, test_loader):
 def main():
     # Parse command line arguments
     parser = argparse.ArgumentParser(description='PyTorch Training Script')
-    parser.add_argument('--batch-size', type=int, default=64, metavar='N',
-                        help='input batch size for training (default: 64)')
-    parser.add_argument('--test-batch-size', type=int, default=1000, metavar='N',
-                        help='input batch size for testing (default: 1000)')
-    parser.add_argument('--epochs', type=int, default=14, metavar='N',
-                        help='number of epochs to train (default: 14)')
+    parser.add_argument('--batch-size', type=int, default=16, metavar='N',
+                        help='input batch size for training (default: 16)')
+    parser.add_argument('--test-batch-size', type=int, default=100, metavar='N',
+                        help='input batch size for testing (default: 100)')
+    parser.add_argument('--epochs', type=int, default=20, metavar='N',
+                        help='number of epochs to train (default: 20)')
     parser.add_argument('--lr', type=float, default=1.0, metavar='LR',
                         help='learning rate (default: 1.0)')
     parser.add_argument('--gamma', type=float, default=0.7, metavar='M',
                         help='Learning rate step gamma (default: 0.7)')
     parser.add_argument('--no-cuda', action='store_true', default=False,
                         help='disables CUDA training')
-    parser.add_argument('--log-interval', type=int, default=10, metavar='N',
+    parser.add_argument('--log-interval', type=int, default=1, metavar='N',
                         help='how many batches to wait before logging training status')
     args = parser.parse_args()
 
@@ -61,7 +58,7 @@ def main():
 
     device = torch.device("cuda" if use_cuda else "cpu")
 
-    model = GaborSimpleModel(kernel_size=19, in_channels=1, num_orientations=8, num_scales=5).to(device) 
+    model = GaborUNet(kernel_size=7, in_channels=1, num_orientations=8, num_scales=5).to(device) 
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
 
     scheduler = StepLR(optimizer, step_size=1, gamma=args.gamma)

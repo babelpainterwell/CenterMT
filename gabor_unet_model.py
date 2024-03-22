@@ -4,28 +4,26 @@ import torch.nn.functional as F
 import numpy as np
 
 class GaborUNet(nn.Module):
-    def __init__(self, kernel_size, in_channels, num_orientations, num_scales, height, width):
+    def __init__(self, kernel_size, in_channels, num_orientations, num_scales):
         super(GaborUNet, self).__init__()
         self.in_channels = in_channels
         self.num_orientations = num_orientations
         self.num_scales = num_scales
         self.kernel_size = kernel_size
-        self.height = height
-        self.width = width
 
         # Encoder (Contraction path)
-        self.enc_conv1 = self.gabor_layer(in_channels, 64, kernel_size, num_orientations, num_scales)
-        self.enc_conv2 = self.gabor_layer(64, 128, kernel_size, num_orientations, num_scales)
-        self.enc_conv3 = self.gabor_layer(128, 256, kernel_size, num_orientations, num_scales)
-        self.enc_conv4 = self.gabor_layer(256, 512, kernel_size, num_orientations, num_scales)
+        self.enc_conv1 = self.gabor_layer(in_channels, 16, kernel_size, num_orientations, num_scales)
+        self.enc_conv2 = self.gabor_layer(16, 32, kernel_size, num_orientations, num_scales)
+        self.enc_conv3 = self.gabor_layer(32, 64, kernel_size, num_orientations, num_scales)
+        self.enc_conv4 = self.gabor_layer(64, 128, kernel_size, num_orientations, num_scales)
 
         # Decoder (Expansion path)
-        self.dec_conv1 = self.gabor_layer(512, 256, kernel_size, num_orientations, num_scales)
-        self.dec_conv2 = self.gabor_layer(512, 128, kernel_size, num_orientations, num_scales)
-        self.dec_conv3 = self.gabor_layer(256, 64, kernel_size, num_orientations, num_scales)
-        self.dec_conv4 = self.gabor_layer(128, 64, kernel_size, num_orientations, num_scales)
+        self.dec_conv1 = self.gabor_layer(128, 64, kernel_size, num_orientations, num_scales)
+        self.dec_conv2 = self.gabor_layer(64, 32, kernel_size, num_orientations, num_scales)
+        self.dec_conv3 = self.gabor_layer(32, 16, kernel_size, num_orientations, num_scales)
+        # self.dec_conv4 = self.gabor_layer(128, 64, kernel_size, num_orientations, num_scales)
 
-        self.out_conv = nn.Conv2d(64, 1, kernel_size=1)
+        self.out_conv = nn.Conv2d(16, 1, kernel_size=1)
 
     def forward(self, x):
         # Encoder
@@ -41,15 +39,14 @@ class GaborUNet(nn.Module):
         dec2 = torch.cat((dec2, enc2), dim=1)
         dec3 = self.dec_conv3(F.interpolate(dec2, scale_factor=2, mode='bilinear', align_corners=True))
         dec3 = torch.cat((dec3, enc1), dim=1)
-        dec4 = self.dec_conv4(dec3)
-
-        out = self.out_conv(dec4)
+        # dec4 = self.dec_conv4(dec3)
+        out = self.out_conv(dec3)
         return torch.sigmoid(out)
 
     def gabor_layer(self, in_channels, out_channels, kernel_size, num_orientations, num_scales):
         return nn.Sequential(
             GaborConv2d(in_channels, out_channels, kernel_size, num_orientations, num_scales),
-            nn.BatchNorm2d(out_channels),
+            nn.BatchNorm2d(2 * out_channels), # Batch normalization after Gabor layer, where we doubled the number of output channels by concatenation
             nn.ReLU(inplace=True)
         )
 
