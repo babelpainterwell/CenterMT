@@ -1,9 +1,11 @@
 import torch
 import torch.nn.functional as F
 from torch.optim.lr_scheduler import StepLR
-from data import train_loader, test_loader
+from data import CenterlineDataset
 from gabor_unet_model import GaborUNet
 import argparse
+from torch.utils.data import DataLoader, Dataset, random_split
+from torchvision import transforms
 
 def train(args, model, device, train_loader, optimizer, epoch):
     model.train()
@@ -11,8 +13,6 @@ def train(args, model, device, train_loader, optimizer, epoch):
         data, target = data.to(device), target.to(device)
         optimizer.zero_grad()
         output = model(data)
-        # Ensure target is the same shape as output for binary_cross_entropy
-        target = target.float()  # Ensure target is float for binary_cross_entropy
         loss = F.binary_cross_entropy(output, target)
         loss.backward()
         optimizer.step()
@@ -43,7 +43,7 @@ def test(model, device, test_loader):
           f' ({accuracy:.0f}%)\n')
 
 def main():
-    # Command-line arguments
+    # COMMAND LINE ARGUMENTS
     parser = argparse.ArgumentParser(description='PyTorch GaborUNet Training')
     parser.add_argument('--batch-size', type=int, default=16, metavar='N',
                         help='input batch size for training (default: 16)')
@@ -61,6 +61,34 @@ def main():
                         help='how many batches to wait before logging training status')
     args = parser.parse_args()
 
+
+
+    # LOAD DATASET
+    img_dir = 'samples'
+    label_dir = 'labels'
+
+    transform = transforms.Compose([
+        transforms.ToTensor(),
+    ])
+
+    dataset = CenterlineDataset(img_dir, label_dir, transform=transform)
+    
+    # Determine lengths for train and test sets
+    total_size = len(dataset)
+    train_size = int(0.8 * total_size)
+    test_size = total_size - train_size
+
+    # Split the dataset
+    train_dataset, test_dataset = random_split(dataset, [train_size, test_size])
+
+    # Create data loaders
+    train_loader = DataLoader(train_dataset, batch_size=8, shuffle=True)
+    test_loader = DataLoader(test_dataset, batch_size=8, shuffle=False)
+
+    print(f"Dataset Preparation Complete! Train loader size: {len(train_loader)}, Test loader size: {len(test_loader)}")
+
+
+    # TRAINING
     use_cuda = not args.no_cuda and torch.cuda.is_available()
     device = torch.device("cuda" if use_cuda else "cpu")
 
@@ -72,6 +100,7 @@ def main():
         train(args, model, device, train_loader, optimizer, epoch)
         test(model, device, test_loader)
         scheduler.step()
+        
 
 if __name__ == '__main__':
     main()
