@@ -119,6 +119,12 @@ def main():
         test_accuracies.append(test_accuracy)
         
         scheduler.step()
+
+    torch.save(model.state_dict(), 'gabor_unet_model_state_dict.pth')
+    print("Model's state_dict saved to gabor_unet_model_state_dict.pth")
+
+    torch.save(model, 'gabor_unet_model_complete.pth')
+    print("Entire model saved to gabor_unet_model_complete.pth")
     
     # Plotting
     plt.figure(figsize=(10, 5))
@@ -140,11 +146,6 @@ def main():
     plt.tight_layout()
     plt.show()
 
-    torch.save(model.state_dict(), 'gabor_unet_model_state_dict.pth')
-    print("Model's state_dict saved to gabor_unet_model_state_dict.pth")
-
-    torch.save(model, 'gabor_unet_model_complete.pth')
-    print("Entire model saved to gabor_unet_model_complete.pth")
 
     # model = GaborUNet(kernel_size=7, in_channels=1, out_channels=1, num_orientations=8, num_scales=5)
     # model.load_state_dict(torch.load('gabor_unet_model_state_dict.pth'))
