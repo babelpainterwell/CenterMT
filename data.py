@@ -1,6 +1,8 @@
 from torch.utils.data import Dataset
 from PIL import Image
 import os
+from torchvision.transforms import functional as TF
+import random
 
 class CenterlineDataset(Dataset):
     def __init__(self, img_dir, label_dir, transform=None):
@@ -33,10 +35,19 @@ class CenterlineDataset(Dataset):
             print(f"Error opening image or label at index {index}: {e}")
             return None, None
 
-        if self.transform:
+        
+        # Always apply basic transformations if provided
+        if self.transform is not None:
             image = self.transform(image)
             label = self.transform(label)
+
+        # Additionally, apply random augmentations
+        if random.random() > 0.5:
+            angle = random.choice([0, 90, 180, 270]) 
+            image = TF.rotate(image, angle)
+            label = TF.rotate(label, angle)
         
+
         return image, label
 
 

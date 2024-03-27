@@ -76,11 +76,13 @@ def main():
     img_dir = 'samples'
     label_dir = 'labels'
 
-    transform = transforms.Compose([
-        transforms.ToTensor(),
+    transforms = transforms.Compose([
+        transforms.RandomHorizontalFlip(),  
+        transforms.RandomRotation(15),  
+        transforms.ToTensor(),  
     ])
 
-    dataset = CenterlineDataset(img_dir, label_dir, transform=transform)
+    dataset = CenterlineDataset(img_dir, label_dir, transform=transforms)
     
     # Determine lengths for train and test sets
     total_size = len(dataset)
