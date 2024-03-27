@@ -43,9 +43,11 @@ def create_overlay(raw_image, output):
     output = output.squeeze().cpu().numpy()
     segmentation = (output > 0.5) * 255  # Convert to binary and scale to 0-255
     segmentation_image = Image.fromarray(segmentation.astype(np.uint8))
-    segmentation_image = segmentation_image.convert("RGBA")
-    overlay = ImageOps.colorize(segmentation_image, 'red', 'red')
     
+    # Colorize the segmentation mask in grayscale mode before converting to RGBA
+    overlay = ImageOps.colorize(segmentation_image, 'black', 'red')  # black is transparent, red is the color
+    overlay = overlay.convert("RGBA")
+
     raw_image = raw_image.convert("RGBA")
     return Image.blend(raw_image, overlay, 0.5)
 
