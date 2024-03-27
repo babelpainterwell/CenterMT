@@ -6,12 +6,15 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # Load the trained model
-model = torch.load('gabor_unet_model_complete.pth')
+if torch.cuda.is_available():
+    model = torch.load('gabor_unet_model_complete.pth')
+else:
+    model = torch.load('gabor_unet_model_complete.pth', map_location=torch.device('cpu'))
 model.eval()
 
 # Device configuration
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-model.to(device)
+# model.to(device)
 
 def load_image(image_path):
     """Load and transform an image."""

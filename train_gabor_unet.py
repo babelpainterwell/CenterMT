@@ -4,11 +4,16 @@ from torch.optim.lr_scheduler import StepLR
 from data import CenterlineDataset
 from gabor_unet_model import GaborUNet
 import argparse
-from torch.utils.data import DataLoader, Dataset, random_split
+from torch.utils.data import DataLoader, random_split
 from torchvision import transforms
+import matplotlib.pyplot as plt
+
+# Add augmentation to the dataset
+
 
 def train(args, model, device, train_loader, optimizer, epoch):
     model.train()
+    train_loss = 0
     for batch_idx, (data, target) in enumerate(train_loader):
         data, target = data.to(device), target.to(device)
         optimizer.zero_grad()
@@ -16,31 +21,35 @@ def train(args, model, device, train_loader, optimizer, epoch):
         loss = F.binary_cross_entropy(output, target)
         loss.backward()
         optimizer.step()
+        train_loss += loss.item()
         if batch_idx % args.log_interval == 0:
             print(f'Train Epoch: {epoch} [{batch_idx * len(data)}/{len(train_loader.dataset)}'
                   f' ({100. * batch_idx / len(train_loader):.0f}%)]\tLoss: {loss.item():.6f}')
+    average_loss = train_loss / len(train_loader)
+    return average_loss
 
-def test(model, device, test_loader):
+
+def test(args, model, device, test_loader, epoch):
     model.eval()
     test_loss = 0
-    total_pixels = 0
     correct_pixels = 0
+    total_pixels = 0
     with torch.no_grad():
-        for data, target in test_loader:
+        # for data, target in test_loader:
+        for batch_idx, (data, target) in enumerate(test_loader):
             data, target = data.to(device), target.to(device)
             output = model(data)
-            # Calculate loss for each batch
             test_loss += F.binary_cross_entropy(output, target, reduction='sum').item()
-            # Threshold output to generate binary prediction map
-            pred = output > 0.5  # Threshold for binary segmentation
+            pred = output > 0.5
             correct_pixels += pred.eq(target).sum().item()
             total_pixels += target.numel()
+            if batch_idx % args.log_interval == 0:
+                print(f'Test Epoch: {epoch} [{batch_idx * len(data)}/{len(test_loader.dataset)}'
+                      f' ({100. * batch_idx / len(test_loader):.0f}%)]\tLoss: {test_loss:.6f}')
 
-    test_loss /= total_pixels
+    average_loss = test_loss / total_pixels
     accuracy = 100. * correct_pixels / total_pixels
-
-    print(f'\nTest set: Average loss: {test_loss:.4f}, Accuracy: {correct_pixels}/{total_pixels}'
-          f' ({accuracy:.0f}%)\n')
+    return average_loss, accuracy
 
 def main():
     # COMMAND LINE ARGUMENTS
@@ -97,10 +106,39 @@ def main():
     scheduler = StepLR(optimizer, step_size=1, gamma=args.gamma)
     print("Training Started!")
 
+    train_losses = []
+    test_losses = []
+    test_accuracies = []
+
     for epoch in range(1, args.epochs + 1):
-        train(args, model, device, train_loader, optimizer, epoch)
-        test(model, device, test_loader)
+        train_loss = train(args, model, device, train_loader, optimizer, epoch)
+        test_loss, test_accuracy = test(args, model, device, test_loader, epoch)
+        
+        train_losses.append(train_loss)
+        test_losses.append(test_loss)
+        test_accuracies.append(test_accuracy)
+        
         scheduler.step()
+    
+    # Plotting
+    plt.figure(figsize=(10, 5))
+    plt.subplot(1, 2, 1)
+    plt.plot(range(1, args.epochs + 1), train_losses, label='Train Loss')
+    plt.plot(range(1, args.epochs + 1), test_losses, label='Test Loss')
+    plt.xlabel('Epoch')
+    plt.ylabel('Loss')
+    plt.title('Loss Curve')
+    plt.legend()
+
+    plt.subplot(1, 2, 2)
+    plt.plot(range(1, args.epochs + 1), test_accuracies, color='red', label='Test Accuracy')
+    plt.xlabel('Epoch')
+    plt.ylabel('Accuracy (%)')
+    plt.title('Accuracy Curve')
+    plt.legend()
+
+    plt.tight_layout()
+    plt.show()
 
     torch.save(model.state_dict(), 'gabor_unet_model_state_dict.pth')
     print("Model's state_dict saved to gabor_unet_model_state_dict.pth")
