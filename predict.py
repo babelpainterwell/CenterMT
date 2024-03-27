@@ -1,53 +1,51 @@
+import os
 import torch
 from torchvision import transforms
 from PIL import Image
+import numpy as np
 import matplotlib.pyplot as plt
 
-
+# Load the trained model
 model = torch.load('gabor_unet_model_complete.pth')
-model.eval()  # Set the model to inference mode
+model.eval()
 
-# Define a transform to convert the image to tensor and normalize it if necessary
-transform = transforms.Compose([
-    transforms.Grayscale(),  
-    transforms.ToTensor(),
-])
+# Device configuration
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+model.to(device)
 
 def load_image(image_path):
     """Load and transform an image."""
+    transform = transforms.Compose([
+        transforms.Grayscale(),  # Convert to grayscale
+        transforms.ToTensor(),
+    ])
     image = Image.open(image_path)
-    image = image.crop((1, 1, 65, 65))
     image = transform(image)
-    image = image.unsqueeze(0)  
-    return image
+    image = image.unsqueeze(0)  # Add a batch dimension
+    return image.to(device)
 
-def predict(model, image_path):
-    """Run model prediction on an image and display original and segmented images."""
-    image = load_image(image_path)
-    
-    # Check if CUDA is available and move the model and input tensor to the appropriate device
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = model.to(device)
-    image = image.to(device)
-    
-    with torch.no_grad():  # Disable gradient calculation for inference
-        output = model(image)
-        # Convert output tensor to CPU for visualization if necessary
-        output = output.cpu()
-        # Assuming the output is a single channel representing the probability map
-        segmented = output.squeeze().numpy() > 0.5
-    
-    # Display the original and the segmented image
-    fig, axes = plt.subplots(1, 2, figsize=(12, 6))
-    original = Image.open(image_path)
-    axes[0].imshow(original, cmap='gray')
-    axes[0].set_title('Original Image')
-    axes[0].axis('off')
-    axes[1].imshow(segmented, cmap='gray')
-    axes[1].set_title('Segmented Image')
-    axes[1].axis('off')
-    plt.show()
+def save_segmentation(output, save_path):
+    """Save the segmentation output."""
+    output = output.squeeze().cpu().numpy()
+    output = (output > 0.5) * 255  # Convert to binary and scale to 0-255
+    img = Image.fromarray(output.astype(np.uint8))
+    img.save(save_path)
 
+validation_dir = 'validation'
+detection_dir = 'detection'
+if not os.path.exists(detection_dir):
+    os.makedirs(detection_dir)
 
-test_image_path = 'samples/sample_1.png'
-predict(model, test_image_path)
+# Predict and save each image in the validation directory
+for image_name in os.listdir(validation_dir):
+    if image_name.endswith('.png'):
+        image_path = os.path.join(validation_dir, image_name)
+        image = load_image(image_path)
+        
+        with torch.no_grad():
+            output = model(image)
+        
+        save_path = os.path.join(detection_dir, image_name.replace('validation', 'detection'))
+        save_segmentation(output, save_path)
+
+print("Prediction completed and saved in 'detection' directory.")
