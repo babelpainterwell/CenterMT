@@ -95,12 +95,25 @@ def main():
     model = GaborUNet(kernel_size=7, in_channels=1, out_channels=1, num_orientations=8, num_scales=5).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
     scheduler = StepLR(optimizer, step_size=1, gamma=args.gamma)
+    print("Training Started!")
 
     for epoch in range(1, args.epochs + 1):
         train(args, model, device, train_loader, optimizer, epoch)
         test(model, device, test_loader)
         scheduler.step()
-        
+
+    torch.save(model.state_dict(), 'gabor_unet_model_state_dict.pth')
+    print("Model's state_dict saved to gabor_unet_model_state_dict.pth")
+
+    torch.save(model, 'gabor_unet_model_complete.pth')
+    print("Entire model saved to gabor_unet_model_complete.pth")
+
+    # model = GaborUNet(kernel_size=7, in_channels=1, out_channels=1, num_orientations=8, num_scales=5)
+    # model.load_state_dict(torch.load('gabor_unet_model_state_dict.pth'))
+    # model.eval() 
+
+    # model = torch.load('gabor_unet_model_complete.pth')
+    # model.eval()  # Set the model to inference mode
 
 if __name__ == '__main__':
     main()

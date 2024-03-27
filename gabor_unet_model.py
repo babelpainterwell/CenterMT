@@ -20,10 +20,10 @@ class GaborUNet(nn.Module):
 
         # Decoder (Expansion path)
         self.dec_conv1 = self.doubleConv3x3(128, 64)
-        self.dec_conv2 = self.doubleConv3x3(64, 32)
-        self.dec_conv3 = self.doubleConv3x3(32, 16)
+        self.dec_conv2 = self.doubleConv3x3(128, 32)
+        self.dec_conv3 = self.doubleConv3x3(64, 16)
 
-        self.out_conv = nn.Conv2d(16, 1, kernel_size=1)
+        self.out_conv = nn.Conv2d(96, 1, kernel_size=1)
 
     def forward(self, x):
         # Encoder
@@ -63,14 +63,11 @@ class GaborUNet(nn.Module):
         )
 
 
-
-
-
 class GaborConv2d(nn.Module):
     def __init__(self, in_channels, kernel_size, num_orientations, num_scales):
         super(GaborConv2d, self).__init__()
         self.in_channels = in_channels
-        self.out_channels = 2 * num_orientations * num_scales
+        self.out_channels = 2 * num_orientations * num_scales # 80
         self.kernel_size = kernel_size
         self.num_orientations = num_orientations
         self.num_scales = num_scales
@@ -78,9 +75,9 @@ class GaborConv2d(nn.Module):
         
 
         # Generate Gabor filter parameters
-        self.sigma, self.theta, self.Lambda, self.psi, self.gamma, self.bias = self.generate_parameters(self.out_channels)
-        self.filter_cos = self.whole_filter(True, self.sigma, self.theta, self.Lambda, self.psi, self.gamma)
-        self.filter_sin = self.whole_filter(False, self.sigma, self.theta, self.Lambda, self.psi, self.gamma)
+        self.sigma, self.theta, self.Lambda, self.psi, self.gamma, self.bias = self.generate_parameters(self.out_channels // 2) # 40
+        self.filter_cos = self.whole_filter(True)
+        self.filter_sin = self.whole_filter(False)
 
     def forward(self, x):
         x_cos = F.conv2d(x, self.filter_cos, padding = self.padding, bias=self.bias)

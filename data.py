@@ -2,7 +2,6 @@ from torch.utils.data import Dataset
 from PIL import Image
 import os
 
-
 class CenterlineDataset(Dataset):
     def __init__(self, img_dir, label_dir, transform=None):
         self.img_dir = img_dir
@@ -24,6 +23,12 @@ class CenterlineDataset(Dataset):
         try:
             image = Image.open(img_path).convert("L")  # Grayscale conversion for images
             label = Image.open(label_path).convert("L")  # Grayscale conversion for labels
+
+            # Crop the first row and column off, adjusting the size to 64x64
+            # Assuming the original size is 65x65, crop to get (1, 1, 65, 65)
+            image = image.crop((1, 1, 65, 65))
+            label = label.crop((1, 1, 65, 65))
+
         except Exception as e:
             print(f"Error opening image or label at index {index}: {e}")
             return None, None
@@ -33,6 +38,7 @@ class CenterlineDataset(Dataset):
             label = self.transform(label)
         
         return image, label
+
 
     
 
