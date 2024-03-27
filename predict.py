@@ -1,7 +1,7 @@
 import os
 import torch
 from torchvision import transforms
-from PIL import Image
+from PIL import Image, ImageOps
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -32,28 +32,41 @@ def save_segmentation(output, save_path):
     img = Image.fromarray(output.astype(np.uint8))
     img.save(save_path)
 
-# def save_raw(raw, save_path):
-#     raw = raw.squeeze().cpu().numpy()
-#     img = Image.fromarray(raw.astype(np.uint))
+def save_image(image, save_path):
+    """Save the PIL or Tensor image."""
+    if isinstance(image, torch.Tensor):
+        image = transforms.ToPILImage()(image.squeeze().cpu())  # Convert tensor to PIL image
+    image.save(save_path)
+
+def create_overlay(raw_image, output):
+    """Create and return an overlay of the detected output on the raw image."""
+    output = output.squeeze().cpu().numpy()
+    segmentation = (output > 0.5) * 255  # Convert to binary and scale to 0-255
+    segmentation_image = Image.fromarray(segmentation.astype(np.uint8))
+    segmentation_image = segmentation_image.convert("RGBA")
+    overlay = ImageOps.colorize(segmentation_image, 'red', 'red')
+    
+    raw_image = raw_image.convert("RGBA")
+    return Image.blend(raw_image, overlay, 0.5)
 
 validation_dir = 'validation'
 detection_dir = 'detection'
 if not os.path.exists(detection_dir):
     os.makedirs(detection_dir)
 
-# Predict and save each image in the validation directory
-for i, image_name in enumerate(os.listdir(validation_dir)):
+# Predict, create overlay, and save each image in the validation directory
+for i, image_name in enumerate(sorted(os.listdir(validation_dir))):
     if image_name.endswith('.png'):
         image_path = os.path.join(validation_dir, image_name)
-        image = load_image(image_path)
+        raw_image = Image.open(image_path).crop((1, 1, 65, 65))
         
+        image_tensor = load_image(image_path)
         with torch.no_grad():
-            output = model(image)
+            output = model(image_tensor)
         
-        folder_dir = os.path.join(detection_dir, f'detection_{i}')
+        # Generate and save the overlay
+        overlay_image = create_overlay(raw_image, output)
+        overlay_save_path = os.path.join(detection_dir, f'overlay_{i + 1}.png')
+        overlay_image.save(overlay_save_path)
 
-        output_save_path = os.path.join(folder_dir, f'output_{i}')
-        raw_save_path = os.path.join(folder_dir, f'raw_{i}')
-        save_segmentation(output, output_save_path)
-
-print("Prediction completed and saved in 'detection' directory.")
+print("Overlay images have been generated and saved in the 'detection' directory.")
