@@ -20,6 +20,7 @@ def load_image(image_path):
         transforms.ToTensor(),
     ])
     image = Image.open(image_path)
+    image = image.crop((1,1,65,65)) 
     image = transform(image)
     image = image.unsqueeze(0)  # Add a batch dimension
     return image.to(device)
@@ -31,13 +32,17 @@ def save_segmentation(output, save_path):
     img = Image.fromarray(output.astype(np.uint8))
     img.save(save_path)
 
+# def save_raw(raw, save_path):
+#     raw = raw.squeeze().cpu().numpy()
+#     img = Image.fromarray(raw.astype(np.uint))
+
 validation_dir = 'validation'
 detection_dir = 'detection'
 if not os.path.exists(detection_dir):
     os.makedirs(detection_dir)
 
 # Predict and save each image in the validation directory
-for image_name in os.listdir(validation_dir):
+for i, image_name in enumerate(os.listdir(validation_dir)):
     if image_name.endswith('.png'):
         image_path = os.path.join(validation_dir, image_name)
         image = load_image(image_path)
@@ -45,7 +50,10 @@ for image_name in os.listdir(validation_dir):
         with torch.no_grad():
             output = model(image)
         
-        save_path = os.path.join(detection_dir, image_name.replace('validation', 'detection'))
-        save_segmentation(output, save_path)
+        folder_dir = os.path.join(detection_dir, f'detection_{i}')
+
+        output_save_path = os.path.join(folder_dir, f'output_{i}')
+        raw_save_path = os.path.join(folder_dir, f'raw_{i}')
+        save_segmentation(output, output_save_path)
 
 print("Prediction completed and saved in 'detection' directory.")
