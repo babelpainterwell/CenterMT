@@ -45,6 +45,7 @@ def create_overlay(raw_image, output):
     """Create and return an overlay of the detected output on the raw image."""
     output = output.squeeze().cpu().numpy()
     segmentation = (output > 0.5) * 255  # Convert to binary and scale to 0-255
+    print(np.all(segmentation < 1))
     segmentation_image = Image.fromarray(segmentation.astype(np.uint8))
     
     # Colorize the segmentation mask in grayscale mode before converting to RGBA
