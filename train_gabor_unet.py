@@ -148,6 +148,9 @@ def main():
     plt.tight_layout()
     plt.show()
 
+    print(train_losses)
+    print(test_losses)
+
 
     # model = GaborUNet(kernel_size=7, in_channels=1, out_channels=1, num_orientations=8, num_scales=5)
     # model.load_state_dict(torch.load('gabor_unet_model_state_dict.pth'))
