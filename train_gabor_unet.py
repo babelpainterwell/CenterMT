@@ -7,18 +7,35 @@ import argparse
 from torch.utils.data import DataLoader, random_split
 from torchvision import transforms
 import matplotlib.pyplot as plt
+from torch import nn
 
-# Add augmentation to the dataset
 
 
-def train(args, model, device, train_loader, optimizer, epoch):
+class WeightedBCELoss(nn.Module):
+    '''Less weight is given to pixels in the dilated area but not in the original target.'''
+    def __init__(self):
+        super(WeightedBCELoss, self).__init__()
+
+    def forward(self, prediction, label, dilated_label):
+        # Calculate weights: pixels in dilated area but not in original target are weighted less
+        weight = torch.ones_like(label)
+        weight[(dilated_label == 1) & (label == 0)] = 0.5  
+        
+        loss = F.binary_cross_entropy(prediction, label, weight=weight)
+        return loss
+
+
+def train(args, model, device, train_loader, optimizer, epoch, custom_loss=None):
     model.train()
     train_loss = 0
-    for batch_idx, (data, target) in enumerate(train_loader):
-        data, target = data.to(device), target.to(device)
+    for batch_idx, (data, target, dilated_target) in enumerate(train_loader):
+        data, target, dilated_target = data.to(device), target.to(device), dilated_target.to(device)
         optimizer.zero_grad()
         output = model(data)
-        loss = F.binary_cross_entropy(output, target) # reduction by mean per target by default
+        if not custom_loss:
+            loss = F.binary_cross_entropy(output, target) 
+        else:
+            loss = custom_loss(output, target, dilated_target)
         loss.backward()
         optimizer.step()
         train_loss += loss.item()
@@ -29,17 +46,20 @@ def train(args, model, device, train_loader, optimizer, epoch):
     return average_loss
 
 
-def test(args, model, device, test_loader, epoch):
+def test(args, model, device, test_loader, epoch, custom_loss=None):
     model.eval()
     test_loss = 0
     total_correct_pixels = 0
     total_pixels = 0
     with torch.no_grad():
         # for data, target in test_loader:
-        for batch_idx, (data, target) in enumerate(test_loader):
-            data, target = data.to(device), target.to(device)
+        for batch_idx, (data, target, dilated_target) in enumerate(test_loader):
+            data, target, dilated_target = data.to(device), target.to(device), dilated_target.to(device)
             output = model(data)
-            loss = F.binary_cross_entropy(output, target, reduction='sum').item()
+            if not custom_loss:
+                loss = F.binary_cross_entropy(output, target, reduction='sum').item()
+            else:
+                loss = custom_loss(output, target, dilated_target).item()
             test_loss += loss
             pred = output > 0.5
             correct_pixels = pred.eq(target).sum().item()
@@ -116,8 +136,8 @@ def main():
     test_accuracies = []
 
     for epoch in range(1, args.epochs + 1):
-        train_loss = train(args, model, device, train_loader, optimizer, epoch)
-        test_loss, test_accuracy = test(args, model, device, test_loader, epoch)
+        train_loss = train(args, model, device, train_loader, optimizer, epoch, custom_loss=WeightedBCELoss())
+        test_loss, test_accuracy = test(args, model, device, test_loader, epoch, custom_loss=WeightedBCELoss())
         
         train_losses.append(train_loss)
         test_losses.append(test_loss)

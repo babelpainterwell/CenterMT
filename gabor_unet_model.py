@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 
+
 class GaborUNet(nn.Module):
     def __init__(self, kernel_size, in_channels=1, out_channels=1, num_orientations=8, num_scales=5):
         super(GaborUNet, self).__init__()
@@ -52,15 +53,17 @@ class GaborUNet(nn.Module):
             nn.ReLU(inplace=True)
         )
     
-    def doubleConv3x3(self, in_channels, out_channels, stride=1):
-        return nn.Sequential(
-            nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=stride, padding=1, bias=False),
-            nn.BatchNorm2d(out_channels),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=stride, padding=1, bias=False),
-            nn.BatchNorm2d(out_channels),
-            nn.ReLU(inplace=True)
-        )
+    def doubleConv3x3(self, in_channels, out_channels, stride=1, dropout_rate=0.5):
+        layers = [
+        nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=stride, padding=1, bias=False),
+        nn.BatchNorm2d(out_channels),
+        nn.ReLU(inplace=True),
+        nn.Dropout2d(p=dropout_rate),  
+        nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=stride, padding=1, bias=False),
+        nn.BatchNorm2d(out_channels),
+        nn.ReLU(inplace=True)
+    ]
+        return nn.Sequential(*layers)
 
 
 class GaborConv2d(nn.Module):
