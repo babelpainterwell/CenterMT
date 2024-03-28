@@ -18,13 +18,13 @@ def train(args, model, device, train_loader, optimizer, epoch):
         data, target = data.to(device), target.to(device)
         optimizer.zero_grad()
         output = model(data)
-        loss = F.binary_cross_entropy(output, target)
+        loss = F.binary_cross_entropy(output, target) # reduction by mean per target by default
         loss.backward()
         optimizer.step()
         train_loss += loss.item()
         if batch_idx % args.log_interval == 0:
             print(f'Train Epoch: {epoch} [{batch_idx * len(data)}/{len(train_loader.dataset)}'
-                  f' ({100. * batch_idx / len(train_loader):.0f}%)]\tLoss: {loss.item():.6f}')
+                  f' ({100. * batch_idx / len(train_loader):.0f}%)]\tLoss (Batch): {loss.item():.6f}')
     average_loss = train_loss / len(train_loader) 
     return average_loss
 
@@ -39,7 +39,8 @@ def test(args, model, device, test_loader, epoch):
         for batch_idx, (data, target) in enumerate(test_loader):
             data, target = data.to(device), target.to(device)
             output = model(data)
-            test_loss += F.binary_cross_entropy(output, target, reduction='sum').item()
+            loss = F.binary_cross_entropy(output, target, reduction='sum').item()
+            test_loss += loss
             pred = output > 0.5
             correct_pixels = pred.eq(target).sum().item()
             total_correct_pixels += correct_pixels
@@ -47,10 +48,10 @@ def test(args, model, device, test_loader, epoch):
             accuracy = 100. * correct_pixels / target.numel()
             if batch_idx % args.log_interval == 0:
                 print(f'Test Epoch: {epoch} [{batch_idx * len(data)}/{len(test_loader.dataset)}'
-                      f' ({100. * batch_idx / len(test_loader):.0f}%)]\tLoss: {test_loss:.6f} \t Accuracy: {accuracy:.2f}%')
+                      f' ({100. * batch_idx / len(test_loader):.0f}%)]\tLoss (Batch): {loss:.6f} \t Accuracy (Batch): {accuracy:.2f}%')
 
-    average_loss = test_loss / len(test_loader.dataset)
-    average_accuracy = 100. * total_correct_pixels / total_pixels # Calculate accuracy per batch
+    average_loss = test_loss / len(test_loader) # Calculate average loss per epoch
+    average_accuracy = 100. * total_correct_pixels / total_pixels # Calculate accuracy per epoch
     return average_loss, average_accuracy
 
 def main():

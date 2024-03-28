@@ -1,19 +1,23 @@
 #!/bin/bash
 #SBATCH --job-name=matlab_sim_multi_cpu
 #SBATCH --partition=short
-#SBATCH --time=72:00:00
+#SBATCH --time=24:00:00
 #SBATCH --array=1-50%50
 #SBATCH --cpus-per-task=1  # Request 1 CPU core per task
-#SBATCH -o /path/to/logs/output_%A_%a.txt  # %A is job ID, %a is array task ID
-#SBATCH -e /path/to/logs/error_%A_%a.txt   # Standard error file
+#SBATCH -o /home/zhang.zhongw/ondemand/dev/Single_branch/Curved_branch/outputs/output_%A_%a.txt  # %A is job ID, %a is array task ID
+#SBATCH -e /home/zhang.zhongw/ondemand/dev/Single_branch/Curved_branch/errors/error_%A_%a.txt   # Standard error file
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1
 #SBATCH --mem-per-cpu=32G 
 
-module load MATLAB/2023a
+
+# Increase MATLAB Java Heap Space to 16 GB
+export MATLAB_JAVA_HEAPSIZE=16384M
+
+module load matlab/R2023a
 
 # Determine the unique directory for this array job
-SIM_DIR="/Curved_branch/simulation_${SLURM_ARRAY_TASK_ID}"
+SIM_DIR="/home/zhang.zhongw/ondemand/dev/Single_branch/Curved_branch/simulations/simulation_${SLURM_ARRAY_TASK_ID}"
 mkdir -p "${SIM_DIR}"
 
 # Define unique directories for samples and labels for this task
@@ -24,12 +28,13 @@ mkdir -p "${LABELS_DIR}"
 
 # Function to run MATLAB simulation
 run_matlab() {
+    cd Curved_branch
     matlab -nodesktop -nosplash -r "try, sqrsum, catch ME, disp(ME.message), end, exit"
 }
 
 # Loop to repeat the MATLAB simulation and restart every 3600 seconds
 SECONDS=0
-MAX_DURATION=$((72 * 3600))  # 72 hours in seconds
+MAX_DURATION=$((24 * 3600))  # 24 hours in seconds, maximum in the cluster
 RESTART_INTERVAL=3600  # Restart every 3600 seconds (1 hour)
 REPEAT_COUNT=0
 MAX_REPEATS=100  # Maximum number of times to repeat the MATLAB simulation
@@ -49,7 +54,3 @@ while [ "$SECONDS" -lt "$MAX_DURATION" ] && [ "$REPEAT_COUNT" -lt "$MAX_REPEATS"
         sleep "$SLEEP_TIME"
     fi
 done
-
-
-
-
